@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Trophy, HelpCircle, ArrowUp, ArrowDown, Loader2, AlertTriangle } from 'lucide-react';
-import Papa from 'papaparse';
+import * as Papa from 'papaparse';
 
 // Google Sheets'ten "Web'de Yayınla > CSV" ile alınan link
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSe8bmnxWlI6ohyOpKOorv-hntnimuz1ePhEt5H_VQYjOa_q7vpohcxezh0Bb9FwdO26eHGmOdH4tLy/pub?output=csv';
@@ -54,7 +54,7 @@ export default function LoldleGame() {
       dynamicTyping: true,
       skipEmptyLines: true,
       delimitersToGuess: [',', '\t', ';'],
-      complete: (results) => {
+      complete: (results: any) => {
         try {
           const rows = (results.data as any[]).filter((r) => r && r.name && String(r.name).trim() !== '');
 
