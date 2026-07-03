@@ -7,7 +7,7 @@ const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSe8bmnxW
 
 // İstersen kendi arka plan görselinin linkini buraya yapıştır (örn. imgur direkt görsel linki).
 // Boş bırakırsan otomatik olarak dokulu bir fantasy arka plan deseni kullanılır.
-const BACKGROUND_IMAGE_URL = 'https://imgur.com/nwLezlA';
+const BACKGROUND_IMAGE_URL = 'https://i.imgur.com/nwLezlA.jpeg';
 
 type Character = {
   name: string;
