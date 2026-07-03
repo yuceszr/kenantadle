@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Trophy, HelpCircle, ArrowUp, ArrowDown, Loader2, AlertTriangle } from 'lucide-react';
-import * as Papa from 'papaparse';
+import Papa from 'papaparse';
 
 // Google Sheets'ten "Web'de Yayınla > CSV" ile alınan link
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSe8bmnxWlI6ohyOpKOorv-hntnimuz1ePhEt5H_VQYjOa_q7vpohcxezh0Bb9FwdO26eHGmOdH4tLy/pub?output=csv';
+
+// İstersen kendi arka plan görselinin linkini buraya yapıştır (örn. imgur direkt görsel linki).
+// Boş bırakırsan otomatik olarak dokulu bir fantasy arka plan deseni kullanılır.
+const BACKGROUND_IMAGE_URL = '';
 
 type Character = {
   name: string;
@@ -28,6 +32,51 @@ type GuessResult = {
   };
 };
 
+const CONFETTI_COLORS = ['#f59e0b', '#ef4444', '#8b5cf6', '#22c55e', '#3b82f6', '#ec4899', '#eab308'];
+
+function ConfettiBurst({ trigger }: { trigger: number }) {
+  const particles = useMemo(() => {
+    if (trigger === 0) return [];
+    const arr: { id: number; side: 'left' | 'right'; top: number; color: string; delay: number; duration: number; size: number; rotate: number }[] = [];
+    for (let i = 0; i < 60; i++) {
+      arr.push({
+        id: i,
+        side: i % 2 === 0 ? 'left' : 'right',
+        top: Math.random() * 90,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        delay: Math.random() * 0.5,
+        duration: 1.6 + Math.random() * 1.2,
+        size: 6 + Math.random() * 8,
+        rotate: Math.random() * 360,
+      });
+    }
+    return arr;
+  }, [trigger]);
+
+  if (particles.length === 0) return null;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
+      {particles.map((p) => (
+        <div
+          key={`${trigger}-${p.id}`}
+          style={{
+            position: 'absolute',
+            top: `${p.top}%`,
+            [p.side]: '-20px',
+            width: `${p.size}px`,
+            height: `${p.size * 0.6}px`,
+            backgroundColor: p.color,
+            animation: `${p.side === 'left' ? 'confettiFlyRight' : 'confettiFlyLeft'} ${p.duration}s ease-out ${p.delay}s forwards`,
+            transform: `rotate(${p.rotate}deg)`,
+            borderRadius: '2px',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function LoldleGame() {
   const [characterData, setCharacterData] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,12 +89,12 @@ export default function LoldleGame() {
   const [showRules, setShowRules] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
 
   const loadData = () => {
     setLoading(true);
     setLoadError(null);
 
-    // Cache-bust ekleyerek her seferinde güncel veriyi çekmeye çalışıyoruz
     const urlWithCacheBust = `${SHEET_CSV_URL}${SHEET_CSV_URL.includes('?') ? '&' : '?'}cb=${Date.now()}`;
 
     Papa.parse(urlWithCacheBust, {
@@ -154,6 +203,7 @@ export default function LoldleGame() {
 
     if (character.name === targetCharacter.name) {
       setGameWon(true);
+      setConfettiTrigger((prev) => prev + 1);
     }
   };
 
@@ -192,15 +242,51 @@ export default function LoldleGame() {
     return 'bg-red-600 border-red-500';
   };
 
-  const themeClass = isDarkMode
-    ? 'bg-gray-900 text-white'
-    : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 text-gray-900';
+  const themeClass = isDarkMode ? 'text-white' : 'text-gray-900';
+
+  const backgroundStyle: React.CSSProperties = BACKGROUND_IMAGE_URL
+    ? {
+        backgroundImage: `url(${BACKGROUND_IMAGE_URL})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }
+    : {
+        backgroundImage: isDarkMode
+          ? 'radial-gradient(circle at 20% 20%, rgba(120,53,15,0.25), transparent 40%), radial-gradient(circle at 80% 60%, rgba(88,28,135,0.25), transparent 45%), repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 8px)'
+          : 'radial-gradient(circle at 20% 20%, rgba(251,191,36,0.25), transparent 40%), radial-gradient(circle at 80% 60%, rgba(217,119,6,0.15), transparent 45%), repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 2px, transparent 2px, transparent 8px)',
+      };
 
   return (
-    <div className={`min-h-screen p-4 transition-colors duration-300 ${themeClass}`} style={{ fontFamily: '"Cinzel", "Trajan Pro", serif' }}>
+    <div
+      className={`min-h-screen p-4 transition-colors duration-300 ${themeClass} ${!BACKGROUND_IMAGE_URL ? (isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100') : ''}`}
+      style={{ fontFamily: '"Cinzel", "Trajan Pro", serif', ...backgroundStyle }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=MedievalSharp&display=swap');
+
+        @keyframes confettiFlyRight {
+          0% { transform: translateX(0) translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateX(110vw) translateY(40vh) rotate(720deg); opacity: 0; }
+        }
+        @keyframes confettiFlyLeft {
+          0% { transform: translateX(0) translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateX(-110vw) translateY(40vh) rotate(-720deg); opacity: 0; }
+        }
+        @keyframes arrowFloatUp {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+        }
+        @keyframes arrowFloatDown {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(6px); }
+        }
+        .arrow-up-anim { animation: arrowFloatUp 0.9s ease-in-out infinite; }
+        .arrow-down-anim { animation: arrowFloatDown 0.9s ease-in-out infinite; }
       `}</style>
+
+      <ConfettiBurst trigger={confettiTrigger} />
+
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8 pt-8">
           <h1 className={`text-5xl font-black mb-3 tracking-widest ${isDarkMode ? 'text-amber-500' : 'text-amber-700'}`} style={{
@@ -286,7 +372,7 @@ export default function LoldleGame() {
           <>
             {showRules && (
               <div className={`rounded-lg p-6 mb-8 border ${
-                isDarkMode ? 'bg-gray-800 border-purple-500' : 'bg-white border-amber-400 shadow-lg'
+                isDarkMode ? 'bg-gray-800/90 border-purple-500' : 'bg-white/90 border-amber-400 shadow-lg'
               }`}>
                 <h3 className={`text-xl font-bold mb-3 ${isDarkMode ? 'text-purple-400' : 'text-amber-700'}`}>
                   Nasıl Oynanır?
@@ -322,13 +408,13 @@ export default function LoldleGame() {
                   placeholder="Karakter adı yaz..."
                   className={`w-full border rounded p-3 focus:outline-none transition-colors ${
                     isDarkMode
-                      ? 'bg-gray-800 border-gray-600 text-white focus:border-purple-500'
-                      : 'bg-white border-gray-300 text-gray-900 focus:border-amber-500 shadow'
+                      ? 'bg-gray-800/95 border-gray-600 text-white focus:border-purple-500'
+                      : 'bg-white/95 border-gray-300 text-gray-900 focus:border-amber-500 shadow'
                   }`}
                 />
                 {searchTerm && filteredCharacters.length > 0 && (
                   <div className={`absolute w-full z-10 mt-1 border rounded max-h-60 overflow-y-auto shadow-xl ${
-                    isDarkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300'
+                    isDarkMode ? 'bg-gray-800/95 border-gray-600' : 'bg-white/95 border-gray-300'
                   }`}>
                     {filteredCharacters.slice(0, 10).map((char, idx) => (
                       <button
@@ -369,7 +455,7 @@ export default function LoldleGame() {
                 <div key={idx} className="grid grid-cols-7 gap-1">
 
                   <div className={`border p-3 flex items-center justify-center rounded overflow-hidden relative ${
-                    isDarkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300 shadow'
+                    isDarkMode ? 'bg-gray-800/95 border-gray-600' : 'bg-white/95 border-gray-300 shadow'
                   }`}
                     style={guess.character.image ? {
                       backgroundImage: `url(${guess.character.image})`,
@@ -407,8 +493,8 @@ export default function LoldleGame() {
                     guess.matches.powerLevel === 'correct' ? 'bg-green-600 border-green-500' : 'bg-red-600 border-red-500'
                   }`}>
                     <span className="text-base font-bold text-white">{guess.character.powerLevel}</span>
-                    {guess.matches.powerLevel === 'higher' && <ArrowUp size={18} className="text-yellow-300" />}
-                    {guess.matches.powerLevel === 'lower' && <ArrowDown size={18} className="text-yellow-300" />}
+                    {guess.matches.powerLevel === 'higher' && <ArrowUp size={18} className="text-yellow-300 arrow-up-anim" />}
+                    {guess.matches.powerLevel === 'lower' && <ArrowDown size={18} className="text-yellow-300 arrow-down-anim" />}
                   </div>
 
                   <div className={`p-2 flex items-center justify-center rounded border ${getMatchColor(guess.matches.plane)}`}>
@@ -422,7 +508,7 @@ export default function LoldleGame() {
             </div>
 
             {guesses.length === 0 && !gameWon && targetCharacter && (
-              <div className={`text-center py-12 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
+              <div className={`text-center py-12 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                 <p className="text-lg">İlk tahmininizi yapın!</p>
               </div>
             )}
